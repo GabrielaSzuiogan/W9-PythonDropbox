@@ -1,25 +1,32 @@
-
 from fastapi import APIRouter
 from fastapi import Depends
+from pydantic import BaseModel, EmailStr, Field
 from db.database import get_db
 from db.models import UserRecord
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    name: str = Field(min_length=5, max_length=20)
+    avatar_url: str = Field(default="")
+    password: str = Field(min_length=8, max_length=20)
+
+
 
 @router.post("/login")
 def login():
     pass
 
 @router.post("/signup")
-def signup(db = Depends(get_db)):
+def signup(user_create: UserCreate, db = Depends(get_db)):
     new_user = UserRecord(
-        email = "test@.test.com",
-        name = "User Test",
-        avatar_url = "avatar.png",
-        password_hash = "hashed_passw"
+        email = user_create.email,
+        name = user_create.name,
+        avatar_url = user_create.avatar_url,
+        password_hash = user_create.password
     )
     
     db.add(new_user)
     db.commit()
-
-    return { "user" : new_user}
+    return (user_create)
