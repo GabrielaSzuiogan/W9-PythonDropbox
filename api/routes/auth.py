@@ -1,3 +1,5 @@
+import hashlib
+
 from fastapi import APIRouter
 from fastapi import Depends
 from pydantic import BaseModel, EmailStr, Field
@@ -20,11 +22,13 @@ def login():
 
 @router.post("/signup")
 def signup(user_create: UserCreate, db = Depends(get_db)):
+    hash_password = hashlib.sha256(user_create.password.encode()).hexdigest()
+
     new_user = UserRecord(
         email = user_create.email,
         name = user_create.name,
         avatar_url = user_create.avatar_url,
-        password_hash = user_create.password
+        password_hash = hash_password
     )
     
     db.add(new_user)
