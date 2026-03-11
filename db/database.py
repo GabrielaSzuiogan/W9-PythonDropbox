@@ -1,8 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import declarative_base
+from typing import Optional
 
-def create_sql_light_engine(path: str | None = None):
+def create_sql_light_engine(path: Optional[str] = None):
     # if path is None:
     #     path = settings.sqlite_database_url
 
