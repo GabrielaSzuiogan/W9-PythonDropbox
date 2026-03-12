@@ -1,6 +1,6 @@
 from .config import settings
-# Import from your newly named .auth file
 from .auth import hash_password, verify_password, create_token, get_current_user
+from .files import save_file_to_disk 
 
 __all__ = [
     "settings",
@@ -8,4 +8,5 @@ __all__ = [
     "verify_password",
     "create_token",
     "get_current_user",
+    "save_file_to_disk",
 ]

@@ -9,6 +9,6 @@ def root(user: UserRecord = Depends(get_current_user)):
     return {"ok": True, "message": "Chatbox API is running", "version": "0.1.0", "user_name": user.email}
 
 
-@router.get("/healthz")
-def healthz():
+@router.get("/health")
+def health():
     return {"ok": True, "service": "chatbox-api", "version": "0.1.0"}
