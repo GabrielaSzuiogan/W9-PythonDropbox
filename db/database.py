@@ -29,8 +29,12 @@ Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def get_db():
     if Session is None:
         raise ValueError("Database not configured.")
+
+    # 1. Create a session
     db = Session()
     try:
+        # 2. Yield the session
         yield db
     finally:
+        # 3. Close the session
         db.close()
