@@ -14,7 +14,7 @@ async def lifespan(app):
     print("🚀 Starting Chatbox API")
     print("=" * 60)
 
-    # Create tables if they don't exist
+    # Create tables if they don't exist, based on all models
     Base.metadata.create_all(bind=engine)
     print("✅ Database tables created/verified")
 
