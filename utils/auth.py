@@ -14,7 +14,7 @@ from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
 
 # 3. Import your settings (assuming config.py is in the utils folder)
-from .config import settings
+from config.settings import settings
 from db.database import get_db
 from db.models import UserRecord
 
@@ -39,7 +39,7 @@ def create_token(user_id: int) -> str:
 
 
 def get_current_user(
-  credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db),
 ) -> UserRecord:
     """Dependency to extract and verify the current logged-in user."""

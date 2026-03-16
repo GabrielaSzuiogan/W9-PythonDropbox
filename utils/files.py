@@ -2,12 +2,11 @@ import uuid
 from pathlib import Path
 from fastapi import UploadFile
 
-# It's good practice to keep the upload directory definition here 
-# or in your config.py!
 UPLOAD_DIR = Path("files")
 
 async def save_file_to_disk(file: UploadFile, user_id: int) -> tuple[str, str, int]:
     """Helper function to generate a random name and save the file to disk."""
+    #unique 32-character string _ path name 
     random_filename = f"{uuid.uuid4().hex}_{Path(file.filename).name}"
     
     user_dir = UPLOAD_DIR / str(user_id)
