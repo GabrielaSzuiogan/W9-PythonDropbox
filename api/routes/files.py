@@ -45,10 +45,13 @@ def list_files(
 
 
 
-@router.get("/search", response_model=List[FileMetadataResponse])
-def search_files(
+@router.get("/search_content")
+def search_content(
     q: str,
+    limit: int = 20,
+    offset: int = 0,
     current_user: UserRecord = Depends(get_current_user),
+    file_service: FileService = Depends(get_file_service),
     db: Session = Depends(get_db)
 ):
     """
@@ -60,14 +63,32 @@ def search_files(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="Search query 'q' cannot be empty"
         )
+    
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
 
-    # Use a standard join since we only want files that actually have extracted text content
-    matched_records = db.query(FileRecord).join(FileContentRecord).filter(
-        FileRecord.user_id == current_user.id,
-        FileContentRecord.content_tsv.op("@@")(func.plainto_tsquery("english", q))
-    ).all()
+    results = file_service.search_content(
+        query=q,
+        user_id=current_user.id,
+        db=db,
+        limit=limit,
+        offset=offset,
+    )
 
-    return matched_records
+    return{ 
+        "query" : q,
+        "limit":limit,
+        "offset":offset,
+        "results" : results
+    }
+
+    # # Use a standard join since we only want files that actually have extracted text content
+    # matched_records = db.query(FileRecord).join(FileContentRecord).filter(
+    #     FileRecord.user_id == current_user.id,
+    #     FileContentRecord.content_tsv.op("@@")(func.plainto_tsquery("english", q))
+    # ).all()
+
+    # return matched_records
 
 
 #gets the details of a specific file

@@ -86,6 +86,52 @@ class FileService:
         db.refresh(record)
 
         return record
+    
+    def search_content(
+            self,
+            *,
+            query: str,
+            user_id: int,
+            db: Session,
+            limit: int = 20,
+            offset: int = 0,
+    ) -> list[dict]:
+        q = (query or "").strip()
+        if not q:
+            return []
+        
+        tsquery = func.websearch_to_tsquery("english", q)
+        rank = func.ts_rank_cd(FileContentRecord.content_tsv, tsquery).label("rank")
+
+        rows = (
+            db.query(FileRecord, rank)
+            .join(FileContentRecord, FileContentRecord.file_id == FileRecord.id)
+            .filter(FileRecord.user_id == user_id)
+            .filter(FileContentRecord.content_tsv.op("@@")(tsquery))
+            .order_by(rank.desc(), FileRecord.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
+        results: list[dict] = []
+        for file_record, file_rank in rows:
+            results.append(
+                {
+                    "rank": float(file_rank or 0.0),
+                    "file" : {
+                        "id": file_record.id,
+                        "original_name": file_record.original_name,
+                        "random_name": file_record.content_type,
+                        "size": file_record.size,
+                        "user_id": file_record.user_id,
+                        "created_at": file_record.created_at,
+                        "path": file_record.path,
+
+                    },
+                }
+            )
+        return results
 
 
 def get_file_service() -> FileService:
