@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 class FileMetadataResponse(BaseModel):
     id: int
-    filename: str
+    original_name: str
     content_type: str
     size: int
     created_at: datetime

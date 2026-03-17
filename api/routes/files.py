@@ -2,12 +2,13 @@ from pathlib import Path
 from typing import List
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session #connects your code to the database
 from api.models import FileMetadataResponse
 from api.services.file_service import FileService, get_file_service
 from db.database import get_db
-from db.models import UserRecord, FileRecord 
-from utils import get_current_user, save_file_to_disk
+from db.models import FileContentRecord, UserRecord, FileRecord 
+from utils import get_current_user
 
 router = APIRouter(prefix="/files", tags=["files"])
 
@@ -30,16 +31,7 @@ async def upload_file(
         db=db,
     )
 
-    return {
-        "id": record.id,
-        "original_name": record.original_name,
-        "random_name": record.random_name,
-        "content_type": record.content_type,
-        "size": record.size,
-        "user_id": record.user_id,
-        "created_at": record.created_at,
-        "path": record.path,
-    }
+    return record
 
 #fetches a list of all files a user owns
 @router.get("", response_model=List[FileMetadataResponse])
@@ -50,6 +42,33 @@ def list_files(
     #a user can never see another user's files
     files = db.query(FileRecord).filter(FileRecord.user_id == current_user.id).all()
     return files
+
+
+
+@router.get("/search", response_model=List[FileMetadataResponse])
+def search_files(
+    q: str,
+    current_user: UserRecord = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Search for files by text. 
+    Matches ONLY against the extracted file content.
+    """
+    if not q or not q.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Search query 'q' cannot be empty"
+        )
+
+    # Use a standard join since we only want files that actually have extracted text content
+    matched_records = db.query(FileRecord).join(FileContentRecord).filter(
+        FileRecord.user_id == current_user.id,
+        FileContentRecord.content_tsv.op("@@")(func.plainto_tsquery("english", q))
+    ).all()
+
+    return matched_records
+
 
 #gets the details of a specific file
 @router.get("/{file_id}", response_model=FileMetadataResponse)
@@ -69,6 +88,7 @@ def retrieve_file_metadata(
         raise HTTPException(status_code=404, detail="File not found")   
     return file_record
 
+
 #downloads or displays the file
 @router.get("/{file_id}/content")
 def retrieve_file_content(
@@ -84,7 +104,8 @@ def retrieve_file_content(
     if not file_record:
         raise HTTPException(status_code=404, detail="File not found")
         
-    file_path = Path(file_record.file_path)
+    file_path = Path(file_record.path)
+
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File missing from disk")
 
@@ -93,6 +114,7 @@ def retrieve_file_content(
     #giving it its original name and telling the browser what kind of file it is
     return FileResponse(
         path=file_path, 
-        filename=file_record.filename, 
+        filename=file_record.original_name, 
         media_type=file_record.content_type
     )
+
