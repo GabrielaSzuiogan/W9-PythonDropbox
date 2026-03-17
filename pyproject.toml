@@ -17,4 +17,5 @@ dependencies = [
     "python-multipart>=0.0.20",
     "sqlalchemy>=2.0.48",
     "uvicorn>=0.39.0",
+    "voyageai>=0.3.7",
 ]

@@ -72,6 +72,8 @@ class FileService:
         raw_bytes = stored.get("raw_bytes", b"")
         try:
             text_content = raw_bytes.decode("utf-8", errors="ignore")
+            #chunk the text content
+            # chunks = chunk_by_char(text_content, chunk_size=150, chunk_overlap=20)
         except Exception:
             text_content = ""
 
