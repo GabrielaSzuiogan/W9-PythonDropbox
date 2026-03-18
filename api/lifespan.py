@@ -14,7 +14,14 @@ async def lifespan(app):
     print("🚀 Starting Chatbox API")
     print("=" * 60)
 
+
+    with engine.connect() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        conn.commit()
+        print("✅ Postgres pgvector extension enabled")
+
     # Create tables if they don't exist, based on all models
+    # Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     print("✅ Database tables created/verified")
 

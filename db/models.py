@@ -7,11 +7,10 @@ from sqlalchemy import (
     ForeignKey,
     Index
 )
-
 from sqlalchemy.dialects.postgresql import TSVECTOR
-#to easily access a user's files
 from sqlalchemy.orm import relationship
 from db.database import Base
+from pgvector.sqlalchemy import Vector
 
 class UserRecord(Base):
     __tablename__ = "users"
@@ -49,6 +48,15 @@ class FileRecord(Base):
         cascade="all, delete-orphan",
     )
 
+    # <-- UPDATED RELATIONSHIP: One file now has MANY chunks -->
+    chunks = relationship(
+        "FileChunkRecord",
+        back_populates="file",
+        cascade="all, delete-orphan",
+    )
+
+
+
 class FileContentRecord(Base):
     __tablename__ = "file_content"
 
@@ -67,3 +75,25 @@ class FileContentRecord(Base):
     )
 
     file = relationship("FileRecord", back_populates="content")
+
+class FileChunkRecord(Base):
+    __tablename__ = "file_chunks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_id = Column(Integer, ForeignKey("files.id"), nullable=False)
+    
+    # We store the actual text of the chunk so we can show it to the user in the search results
+    text_content = Column(String, nullable=False)
+    
+    # Full-text search (keyword match)
+    content_tsv = Column(TSVECTOR, nullable=False)
+    
+    # Semantic search (Embedding match). Voyage-4 uses 2048 dimensions!
+    embedding = Column(Vector(2048), nullable=False)
+
+    __table_args__ = (
+        # GIN index for fast full-text keyword search
+        Index("ix_file_chunks_content_tsv", "content_tsv", postgresql_using="gin"),
+    )
+
+    file = relationship("FileRecord", back_populates="chunks")

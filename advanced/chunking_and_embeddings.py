@@ -80,12 +80,27 @@ def embed(texts: list[str], model: str = "voyage-4") -> list[list[float]]:
 
 
 
-def log_chunks(chunks: list[str], embeddings: list[list[float]]) -> None:
-    for i, chunk in enumerate[str](chunks):
+def log_chunks(chunks: list[str]) -> None:
+    for i, chunk in enumerate(chunks):
         print(f"Chunk {i + 1}:")
-        print(f"Embedding: {embeddings[i][:5]}:")
         print("-" * 60)
         print(chunk)
+        print("-" * 60)
+        print("\n")
+
+def log_chunks_and_embeddings(chunks: list[str], embeddings: list[list[float]]) -> None:
+    for i, chunk in enumerate(chunks):
+        print(f"Chunk {i + 1}:")
+        print(f"Embedding: {embeddings[i][:5]}")
+        print("-" * 60)
+        print(chunk)
+        print("-" * 60)
+        print("\n")
+
+def log_embeddings(embeddings: list[list[float]]) -> None:
+    for i, embedding in enumerate(embeddings):
+        print(f"Embedding {i + 1}:")
+        print(embedding[:5])
         print("-" * 60)
         print("\n")
 
@@ -95,9 +110,9 @@ def main():
     chunks = chunk_by_char(DOCUMENT, chunk_size=150, chunk_overlap=20)
     chunks = chunk_by_sentence(DOCUMENT, max_sentences_per_chunk=3, overlap_sentences=1)
     chunks = chunk_by_section(DOCUMENT)
-    embeddings = embed(chunks[:3])
+    embeddings = embed(chunks)
 
-    log_chunks(chunks[:3], embeddings)
+    log_chunks(embeddings)
     
 
 

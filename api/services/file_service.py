@@ -6,7 +6,10 @@ from fastapi import UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from db.models import FileContentRecord, FileRecord
+#from db.models import FileContentRecord, FileRecord
+
+from api.services.chunk_service import chunk_text, get_embeddings
+from db.models import FileChunkRecord, FileRecord, FileContentRecord 
 
 
 class FileService:
@@ -77,12 +80,30 @@ class FileService:
         except Exception:
             text_content = ""
 
-        if text_content:
-            content_record = FileContentRecord(
-                file_id=record.id,
-                content_tsv=func.to_tsvector("english", text_content),
-            )
-            db.add(content_record)
+        # if text_content:
+        #     content_record = FileContentRecord(
+        #         file_id=record.id,
+        #         content_tsv=func.to_tsvector("english", text_content),
+        #     )
+        #     db.add(content_record)
+
+        if text_content.strip():
+            # 1. Use your new service to chunk the text
+            chunks = chunk_text(text_content, chunk_size=500, chunk_overlap=50)
+            
+            if chunks:
+                # 2. Use your new service to get the Voyage embeddings
+                embeddings = get_embeddings(chunks)
+
+                # 3. Save to database
+                for i, chunk_text_str in enumerate(chunks):
+                    chunk_record = FileChunkRecord(
+                        file_id=record.id,
+                        text_content=chunk_text_str,
+                        content_tsv=func.to_tsvector("english", chunk_text_str),
+                        embedding=embeddings[i]
+                    )
+                    db.add(chunk_record)
 
         db.commit()
         db.refresh(record)
@@ -102,35 +123,46 @@ class FileService:
         if not q:
             return []
         
-        tsquery = func.websearch_to_tsquery("english", q)
-        rank = func.ts_rank_cd(FileContentRecord.content_tsv, tsquery).label("rank")
+        # 1. Ask Voyage AI to turn the user's search query into an embedding
+        from api.services.chunk_service import get_embeddings # Import your voyage function
+        query_embeddings = get_embeddings([q])
+        query_vector = query_embeddings[0]
 
+        # 2. Tell pgvector to calculate the Cosine Distance between the search query and the file chunks
+        # Cosine distance measures how similar the meaning of the texts are.
+        distance = FileChunkRecord.embedding.cosine_distance(query_vector).label("distance")
+
+        # 3. Query the database, joining the chunks to their parent files
         rows = (
-            db.query(FileRecord, rank)
-            .join(FileContentRecord, FileContentRecord.file_id == FileRecord.id)
+            db.query(FileRecord, FileChunkRecord, distance)
+            .join(FileChunkRecord, FileChunkRecord.file_id == FileRecord.id)
             .filter(FileRecord.user_id == user_id)
-            .filter(FileContentRecord.content_tsv.op("@@")(tsquery))
-            .order_by(rank.desc(), FileRecord.created_at.desc())
+            .order_by(distance) # Smallest distance means closest match!
             .offset(offset)
             .limit(limit)
             .all()
         )
 
+        # 4. Format the results for Postman
         results: list[dict] = []
-        for file_record, file_rank in rows:
+        for file_record, chunk_record, dist in rows:
+            # We convert "distance" into a "similarity score" (1.0 is a perfect match)
+            similarity_score = 1.0 - float(dist) 
+            
             results.append(
                 {
-                    "rank": float(file_rank or 0.0),
+                    "rank": similarity_score,
                     "file" : {
                         "id": file_record.id,
                         "original_name": file_record.original_name,
-                        "random_name": file_record.content_type,
+                        "content_type": file_record.content_type,
                         "size": file_record.size,
-                        "user_id": file_record.user_id,
                         "created_at": file_record.created_at,
-                        "path": file_record.path,
-
                     },
+                    "chunk": {
+                        "id": chunk_record.id,
+                        "text_content": chunk_record.text_content
+                    }
                 }
             )
         return results
