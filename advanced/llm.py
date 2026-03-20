@@ -14,7 +14,6 @@ def get_weather(city: str) -> str:
   """Get the weather of a city"""
   return "22 degrees Celsius"
 
-# Schema for get_weather tool
 weather_schema = {
   "type": "function",
   "function": {
@@ -43,7 +42,6 @@ def get_person_age(name: str) -> str:
         "maria": "30",
         "sarah": "20"
     }
-    # Return the age if we know them, otherwise return "Unknown"
     age = mock_db.get(name.lower(), "I dont know that person!")
     return f"{age} years old"
 
@@ -65,43 +63,11 @@ age_schema = {
   }
 }
 
-# Calculator 
-def calculate(a: float, b: float, operator: str) -> str:
-    """Perform a basic math operation on two numbers"""
-    if operator == "add": return str(a + b)
-    if operator == "subtract": return str(a - b)
-    if operator == "multiply": return str(a * b)
-    if operator == "divide": 
-        if b == 0: return "Error: Cannot divide by zero"
-        return str(a / b)
-    return "Unknown operator"
-
-calculator_schema = {
-    "type": "function",
-    "function": {
-        "name": "calculate",
-        "description": "Perform a basic math operation on two numbers",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "a": {"type": "number", "description": "The first number"},
-                "b": {"type": "number", "description": "The second number"},
-                "operator": {
-                    "type": "string", 
-                    "enum": ["add", "subtract", "multiply", "divide"],
-                    "description": "The math operation to perform"
-                }
-            },
-            "required": ["a", "b", "operator"]
-        }
-    }
-}
 
 # -- read file
 def read_file(file_path: str) -> str:
     """Read the contents of a text file from the local computer"""
     try:
-        # We try to open and read the file
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
             return content
@@ -132,7 +98,6 @@ read_file_schema = {
 available_functions = {
     "get_weather": get_weather,
     "get_person_age": get_person_age,
-    "calculate": calculate,
     "read_file": read_file,
 }
 
@@ -142,7 +107,6 @@ def execute_tool_call(tool_call):
     function_to_call = available_functions[function_name]
     function_args = json.loads(tool_call.function.arguments)
     
-    # Call the function with unpacked arguments
     return function_to_call(**function_args)
 
 
@@ -174,7 +138,7 @@ def run_completion(messages):
   completion = client.chat.completions.create(
     model="openai/gpt-oss-20b",
     messages=messages,
-    tools=[weather_schema, age_schema, calculator_schema,read_file_schema],
+    tools=[weather_schema, age_schema, read_file_schema],
     tool_choice="auto",
   )
 
@@ -214,7 +178,7 @@ print("="*60)
 
 while True:
   try:
-        # 1. Get user input
+      # users input
       user_input = input("\nYou: ")
       if user_input.lower() in ['exit', 'quit', 'bye']:
           break
@@ -223,20 +187,20 @@ while True:
 
       add_message(user_input)
 
-        # 2. Send to AI
+      # send to AI
       response = run_completion(messages)
 
-        # 3. Check if the AI wants to use a tool
+      # check if it using the tool
       if response.tool_calls:
-            # Save the AI's tool request to history
+          # save the AI's tool request
           messages.append(response.model_dump(exclude_unset=True))
             
-            # Execute all requested tools
+          # execute requested tools
           for tool_call in response.tool_calls:
               print(f"  [ Executing Tool: {tool_call.function.name}...]")
               tool_result = execute_tool_call(tool_call)
                 
-                # Save the tool results to history
+              # save the tool results
               messages.append({
                   "role": "tool",
                   "tool_call_id": tool_call.id,
@@ -244,14 +208,13 @@ while True:
                   "content": str(tool_result)
               })
 
-            # Ask the AI to read the tool results and write a final reply
           response = run_completion(messages)
 
-        # 4. Extract the final text response and save it to history
+      # extract the final text response
       final_text = response.content
       add_ai_message(final_text)
 
-        # 5. Print the response
+      # response
       print("-" * 80)
       print(f" AI: {final_text}")
       print("-" * 80)

@@ -9,7 +9,7 @@ from sqlalchemy import func
 #from db.models import FileContentRecord, FileRecord
 
 from api.services.chunk_service import chunk_text, get_embeddings
-from db.models import FileChunkRecord, FileRecord, FileContentRecord 
+from db.models import FileChunkRecord, FileRecord 
 
 
 class FileService:
